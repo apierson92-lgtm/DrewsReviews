@@ -13,6 +13,11 @@ app.get("/stocks", async (req, res) => {
     const r = await fetch(url);
     const data = await r.json();
 
+    // Return raw FMP response so we can see what's coming back
+    if (!Array.isArray(data)) {
+      return res.status(500).json({ error: "FMP did not return an array", raw: data });
+    }
+
     const stocks = data.map(s => ({
       ticker: s.symbol,
       name: s.companyName,

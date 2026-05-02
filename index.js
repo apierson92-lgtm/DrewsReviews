@@ -1,37 +1,31 @@
 const express = require("express");
 const cors = require("cors");
-const fetch = require("node-fetch");
+const yahooFinance = require("yahoo-finance2").default;
 
 const app = express();
 app.use(cors());
 
 app.get("/stocks", async (req, res) => {
   try {
-    const key = process.env.FMP_API_KEY;
-    const url = `https://financialmodelingprep.com/api/v3/stock-screener?marketCapMoreThan=100000000&isEtf=false&isActivelyTrading=true&limit=500&apikey=${key}`;
-    
-    const r = await fetch(url);
-    const data = await r.json();
+    const result = await yahooFinance.screener({
+      scrIds: "undervalued_growth_stocks",
+      count: 250,
+    });
 
-    // Return raw FMP response so we can see what's coming back
-    if (!Array.isArray(data)) {
-      return res.status(500).json({ error: "FMP did not return an array", raw: data });
-    }
-
-    const stocks = data.map(s => ({
+    const stocks = (result.quotes || []).map(s => ({
       ticker: s.symbol,
-      name: s.companyName,
+      name: s.longName || s.shortName || s.symbol,
       sector: s.sector || "Unknown",
-      price: s.price || 0,
+      price: s.regularMarketPrice || 0,
       marketCap: s.marketCap ? +(s.marketCap / 1e9).toFixed(1) : 0,
-      pe: s.pe ? +s.pe.toFixed(1) : null,
-      ebitdaGrowth: null,
-      revenueGrowth: null,
-      margin: null,
-      debtEquity: null,
-      divYield: s.lastAnnualDividend && s.price ? +((s.lastAnnualDividend / s.price) * 100).toFixed(2) : 0,
+      pe: s.forwardPE ? +s.forwardPE.toFixed(1) : null,
+      ebitdaGrowth: s.earningsGrowth ? +(s.earningsGrowth * 100).toFixed(1) : null,
+      revenueGrowth: s.revenueGrowth ? +(s.revenueGrowth * 100).toFixed(1) : null,
+      margin: s.profitMargins ? +(s.profitMargins * 100).toFixed(1) : null,
+      debtEquity: s.debtToEquity ? +(s.debtToEquity / 100).toFixed(2) : null,
+      divYield: s.dividendYield ? +(s.dividendYield * 100).toFixed(2) : 0,
       beta: s.beta ? +s.beta.toFixed(2) : null,
-      volatility: null,
+      volatility: s["52WeekChange"] ? +(Math.abs(s["52WeekChange"]) * 100).toFixed(1) : null,
     })).filter(s => s.ticker && s.marketCap > 0);
 
     res.json(stocks);

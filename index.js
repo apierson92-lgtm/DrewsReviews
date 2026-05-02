@@ -1,6 +1,6 @@
-const express = require("express");
-const cors = require("cors");
-const yahooFinance = require("yahoo-finance2").default;
+import express from "express";
+import cors from "cors";
+import yahooFinance from "yahoo-finance2";
 
 const app = express();
 app.use(cors());
